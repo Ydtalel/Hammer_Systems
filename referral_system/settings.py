@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'referrals.apps.ReferralsConfig',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [

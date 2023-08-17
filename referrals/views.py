@@ -1,54 +1,47 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse, HttpResponse
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import AllowAny
+from django.shortcuts import get_object_or_404
 from .models import UserProfile, VerificationCode
-from django.views.decorators.csrf import csrf_exempt
-from django.core.exceptions import ObjectDoesNotExist
+from .serializers import UserProfileSerializer
 
 import random
 import time
 import string
 
 
-def home(request):
-    return HttpResponse('Hello world')
+class UserProfileViewSet(ModelViewSet):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [AllowAny]  # Настройте права доступа по своим требованиям
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        new_invite_code = request.data.get('invite_code')
 
-@csrf_exempt  # удалить перед запуском
-def profile(request):
-    phone_number = request.GET.get('phone_number')
-    user = get_object_or_404(UserProfile, phone_number=phone_number)
-
-    if request.method == 'GET':
-        data = {
-            'phone_number': user.phone_number,
-            'invite_code': user.invite_code,
-            'referred_by': user.referred_by.phone_number if user.referred_by else None
-        }
-        return JsonResponse(data)
-    elif request.method == 'PUT':
-        new_invite_code = request.PUT.get('invite_code')  # Получаем новое значение инвайт-кода
-
-        if user.invite_code and new_invite_code:
-            return JsonResponse({'status': 'error', 'message': 'Invite code already exists.'})
+        if instance.invite_code and new_invite_code:
+            return Response({'status': 'error', 'message': 'Invite code already exists.'},
+                            status=status.HTTP_400_BAD_REQUEST)
         elif new_invite_code:
-            user.invite_code = new_invite_code
-            user.save()
-            return JsonResponse({'status': 'updated', 'message': 'Invite code updated.'})
+            instance.invite_code = new_invite_code
+            instance.save()
+            return Response({'status': 'updated', 'message': 'Invite code updated.'})
         else:
-            return JsonResponse({'status': 'error', 'message': 'New invite code is empty.'})
+            return Response({'status': 'error', 'message': 'New invite code is empty.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-    return HttpResponse('Invalid request method.')
 
-
-@csrf_exempt  # удалить перед запуском
+@api_view(['POST'])
 def activate_invite(request):
     if request.method == 'POST':
-        phone_number = request.POST.get('phone_number')
-        invite_code = request.POST.get('invite_code')
+        phone_number = request.data.get('phone_number')
+        invite_code = request.data.get('invite_code')
 
         try:
             referred_by_user = UserProfile.objects.get(invite_code=invite_code)
-        except ObjectDoesNotExist:
+        except UserProfile.DoesNotExist:
             referred_by_user = None
 
         user, created = UserProfile.objects.get_or_create(phone_number=phone_number)
@@ -66,13 +59,14 @@ def activate_invite(request):
 
             time.sleep(2)
 
-            return JsonResponse({'status': 'created', 'message': 'Verification code sent.'})
+            return Response({'status': 'created', 'message': 'Verification code sent.'}, status=status.HTTP_201_CREATED)
         else:
-            return JsonResponse({'status': 'exists', 'message': 'User already exists.'})
+            return Response({'status': 'exists', 'message': 'User already exists.'}, status=status.HTTP_200_OK)
 
-    return HttpResponse('Invalid request method.')
+    return Response({'status': 'error', 'message': 'Invalid request method.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET'])
 def referral_list(request):
     if request.method == 'GET':
         phone_number = request.GET.get('phone_number')
@@ -82,6 +76,6 @@ def referral_list(request):
 
         user_list = [{'phone_number': referred_user.phone_number} for referred_user in referred_users]
 
-        return JsonResponse({'referred_users': user_list})
+        return Response({'referred_users': user_list})
 
-    return HttpResponse('Invalid request method.')
+    return Response({'status': 'error', 'message': 'Invalid request method.'}, status=status.HTTP_400_BAD_REQUEST)
