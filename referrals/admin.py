@@ -8,5 +8,12 @@ class UserProfileAdmin(admin.ModelAdmin):
     search_fields = ('phone_number', 'invite_code')
 
 
+class VerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ('user', 'code', 'created_at')
+    list_filter = ('user',)
+    search_fields = ('user__phone_number', 'code')
+    date_hierarchy = 'created_at'
+
 admin.site.register(UserProfile, UserProfileAdmin)
-admin.site.register(VerificationCode)
+admin.site.register(VerificationCode, VerificationCodeAdmin)
+

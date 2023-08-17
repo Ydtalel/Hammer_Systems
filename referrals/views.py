@@ -1,81 +1,95 @@
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.decorators import api_view, permission_classes
+from django.core.cache import cache
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from django.shortcuts import get_object_or_404
-from .models import UserProfile, VerificationCode
-from .serializers import UserProfileSerializer
-
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.decorators import action
 import random
 import time
 import string
-
+from .models import UserProfile, VerificationCode
+from .serializers import UserProfileSerializer
 
 class UserProfileViewSet(ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
-    permission_classes = [AllowAny]  # Настройте права доступа по своим требованиям
+    permission_classes = [AllowAny]
 
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        new_invite_code = request.data.get('invite_code')
-
-        if instance.invite_code and new_invite_code:
-            return Response({'status': 'error', 'message': 'Invite code already exists.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        elif new_invite_code:
-            instance.invite_code = new_invite_code
-            instance.save()
-            return Response({'status': 'updated', 'message': 'Invite code updated.'})
-        else:
-            return Response({'status': 'error', 'message': 'New invite code is empty.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['POST'])
-def activate_invite(request):
-    if request.method == 'POST':
+    # Действие для отправки кода подтверждения на указанный номер телефона
+    @action(detail=False, methods=['POST'])
+    def send_verification_code(self, request):
         phone_number = request.data.get('phone_number')
+
+        # Генерируем случайный 4-значный код подтверждения
+        verification_code = ''.join(random.choices('0123456789', k=4))
+
+        # Сохраняем код подтверждения в кэше с тайм-аутом 10 минут
+        cache.set(f'verification_code_{phone_number}', verification_code, timeout=600)
+
+        return Response(
+            {'status': 'sent', 'message': 'Verification code sent.', 'verification_code': verification_code},
+            status=status.HTTP_201_CREATED)
+
+    # Действие для проверки введенного кода подтверждения и создания пользователя
+    @action(detail=False, methods=['PUT'])
+    def verify_code(self, request):
+        phone_number = request.data.get('phone_number')
+        entered_code = request.data.get('verification_code')
+
+        cached_code = cache.get(f'verification_code_{phone_number}')
+
+        if cached_code == entered_code:
+            # Получаем или создаем пользователя на основе номера телефона
+            user, created = UserProfile.objects.get_or_create(phone_number=phone_number)
+
+            if created:
+                # Генерируем случайный 6-значный инвайт-код для нового пользователя
+                invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+                user.invite_code = invite_code
+                user.save()
+
+            return Response({'status': 'success', 'message': 'Verification successful.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'status': 'error', 'message': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Действие для получения информации о профиле пользователя
+    @action(detail=False, methods=['GET'])
+    def profile(self, request):
+        phone_number = request.data.get('phone_number')
+
+        try:
+            user = UserProfile.objects.get(phone_number=phone_number)
+        except UserProfile.DoesNotExist:
+            return Response({'status': 'error', 'message': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({'phone_number': user.phone_number, 'invite_code': user.invite_code})
+
+    # Действие для активации инвайт-кода текущим пользователем
+    @action(detail=True, methods=['POST'])
+    def activate_invite(self, request, pk=None):
         invite_code = request.data.get('invite_code')
 
         try:
             referred_by_user = UserProfile.objects.get(invite_code=invite_code)
         except UserProfile.DoesNotExist:
-            referred_by_user = None
+            return Response({'status': 'error', 'message': 'Invalid invite code.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        user, created = UserProfile.objects.get_or_create(phone_number=phone_number)
+        user = self.get_object()
 
-        if created:
-            verification_code = ''.join(random.choices('0123456789', k=4))
-            VerificationCode.objects.create(user=user, code=verification_code)
+        if user.referred_by:
+            return Response({'status': 'error', 'message': 'Invite code already activated.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            user.invite_code = invite_code
+        user.referred_by = referred_by_user
+        user.save()
 
-            # Установка связи с реферрером
-            user.referred_by = referred_by_user
-            user.save()
+        return Response({'status': 'success', 'message': 'Invite code activated.'}, status=status.HTTP_200_OK)
 
-            time.sleep(2)
-
-            return Response({'status': 'created', 'message': 'Verification code sent.'}, status=status.HTTP_201_CREATED)
-        else:
-            return Response({'status': 'exists', 'message': 'User already exists.'}, status=status.HTTP_200_OK)
-
-    return Response({'status': 'error', 'message': 'Invalid request method.'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET'])
-def referral_list(request):
-    if request.method == 'GET':
-        phone_number = request.GET.get('phone_number')
-        user = get_object_or_404(UserProfile, phone_number=phone_number)
-
+    # Действие для получения списка пользователей, которые использовали инвайт-код текущего пользователя
+    @action(detail=True, methods=['GET'])
+    def referred_users(self, request, pk=None):
+        user = self.get_object()
         referred_users = UserProfile.objects.filter(referred_by=user)
 
         user_list = [{'phone_number': referred_user.phone_number} for referred_user in referred_users]
 
         return Response({'referred_users': user_list})
-
-    return Response({'status': 'error', 'message': 'Invalid request method.'}, status=status.HTTP_400_BAD_REQUEST)
