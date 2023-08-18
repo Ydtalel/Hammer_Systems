@@ -1,0 +1,32 @@
+{% extends 'referrals/base.html' %}
+
+{% block title %}Verify Code{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h2 class="mb-4">Verify Code</h2>
+        <p class="mb-3">Enter the 4-digit code sent to {{ phone_number }}</p>
+        <p class="mb-3">Generated Code: {{ generated_code }}</p>
+
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="verification_code">Verification Code:</label>
+                <input type="text" name="verification_code" class="form-control" required>
+                <small class="form-text text-muted">Enter the code above.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

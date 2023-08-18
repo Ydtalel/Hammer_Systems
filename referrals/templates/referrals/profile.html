@@ -1,0 +1,39 @@
+{% extends 'referrals/base.html' %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h2 class="mb-4">Profile</h2>
+        <p>Your Phone Number: {{ user.phone_number }}</p>
+        <p>Your Invite Code: {{ user.invite_code }}</p>
+        {% if invite_status == 'not_activated' and user.referred_by is None %}
+        {% if invite_error %}
+        <div class="alert alert-danger">
+            {{ invite_error }}
+        </div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="invite_code">Enter Invite Code:</label>
+                <input type="text" name="invite_code" class="form-control">
+                <small class="form-text text-muted">Enter an invite code to activate.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Activate</button>
+        </form>
+        {% elif user.referred_by %}
+        <p>Your invite code was activated by: {{ user.referred_by.phone_number }}</p>
+        {% endif %}
+        {% if invitees %}
+        <h3>Invited Users:</h3>
+        <ul class="list-group">
+            {% for invitee in invitees %}
+                <li class="list-group-item">{{ invitee.phone_number }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
