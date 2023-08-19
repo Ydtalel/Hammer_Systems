@@ -1,4 +1,5 @@
-[Проект так же размещен по адресу] (yurchik.pythonanywhere.com)
+[Проект также размещен по адресу](http://yurchik.pythonanywhere.com)
+
 
 # запросы через интерфейс на Django Templates
 ```
