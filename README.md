@@ -1,3 +1,5 @@
+[Проект так же размещен по адресу] (yurchik.pythonanywhere.com)
+
 # запросы через интерфейс на Django Templates
 ```
 /login/
