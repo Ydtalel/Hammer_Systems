@@ -1,7 +1,6 @@
 [Ссылка на проект pythonanywhere ](http://yurchik.pythonanywhere.com)
-[Ссылка на dockerhub ](https://hub.docker.com/repository/docker/ydtalel/web_app/general)
 
-
+[Ссылка на Docker Hub](https://hub.docker.com/repository/docker/ydtalel/web_app/general)
 
 
 # запросы через интерфейс на Django Templates
