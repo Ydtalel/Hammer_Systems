@@ -1,4 +1,4 @@
-[Проект также размещен по адресу](http://yurchik.pythonanywhere.com)
+[Ссылка на проект pythonanywhere ](http://yurchik.pythonanywhere.com)
 
 
 # запросы через интерфейс на Django Templates
