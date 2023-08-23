@@ -3,6 +3,10 @@
 [Ссылка на Docker Hub](https://hub.docker.com/repository/docker/ydtalel/web_app/general)
 
 
+# Удобный интерфейс
+более удобный интерфейс для запросов по адресу/
+localhost:8000/v1
+
 # запросы через интерфейс на Django Templates
 ```
 /login/
