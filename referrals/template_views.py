@@ -8,6 +8,10 @@ import random
 import time
 
 
+def menu_root(request):
+    return render(request, 'referrals/menu.html')
+
+
 def login_view(request):
     if request.method == 'POST':
         phone_number = request.POST.get('phone_number')
