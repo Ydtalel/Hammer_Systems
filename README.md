@@ -5,7 +5,13 @@
 
 # Удобный интерфейс
 более удобный интерфейс для запросов по адресу/
-localhost:8000/v1
+localhost:8000/v1/
+
+## Установка:
+
+1. Клонировать репозиторий: ```git clone https://github.com/Ydtalel/Hammer_Systems.git```
+2. Установить зависимости: pip install -r requirements.txt
+3. Создать файл .env со следующими полями ( DB_USER, DB_PASSWORD)
 
 # запросы через интерфейс на Django Templates
 ```
